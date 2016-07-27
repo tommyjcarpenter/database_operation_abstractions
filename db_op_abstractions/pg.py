@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import division
 import sys, traceback
 import psycopg2
@@ -121,5 +123,36 @@ class PGConnCM(object):
                 logger.error("Unknown error: {1}".format(msg))
                 self.connection.rollback()
                 return 0
+    
+    def get_all_tables(self):
+        """
+        No easy way to get the equivelent of \dt in SQL form. 
+        This just does the answer from: http://stackoverflow.com/questions/14730228/postgres-query-to-list-all-table-names
+        """
+        stmt = """
+        SELECT table_name
+          FROM information_schema.tables
+           WHERE table_schema='public'
+              AND table_type='BASE TABLE';
+        """
+        self.cursor.execute(stmt)
+        return [i[0] for i in self.cursor.fetchall()]
+
+    def row_count_all_tables(self):
+        """
+        There is no way to easily get the EXACT row count of all tables in a database:
+        http://stackoverflow.com/questions/2596670/how-do-you-find-the-row-count-for-all-your-tables-in-postgres
+
+        If you can't rely on one of the estimates there, this function computes it exactly. 
+
+        Returns a list of tuples [(table_name, row_count)]
+        """
+        tables = self.get_all_tables()
+        ret = []
+        for t in tables:
+            self.cursor.execute("SELECT COUNT(*) FROM {0}".format(t))
+            ret.append((t, int(self.cursor.fetchone()[0])))
+        return ret
+
     
     
