@@ -65,7 +65,22 @@ class PGConnCM(object):
                 logger.error("Unknown error on: {0}, error: {1}".format(q,msg))
                 self.connection.rollback()
         logger.info("Sucessfuly executed {0} out of {1} operations".format(succ_exec, len(Q)))
-
+    
+    def exec_query_list_rollback_on_error(self, Q):
+        for q in Q:
+            try: 
+                self.cursor.execute(q)
+            except psycopg2.ProgrammingError as msg:
+                logger.error("Failed pg execution: {0}, error: {1}".format(q,msg))
+                self.connection.rollback() #rollback and reraise
+                raise msg
+            except Exception as msg:
+                logger.error("Unknown error on: {0}, error: {1}".format(q,msg))
+                self.connection.rollback() #rollback and reraise
+                raise msg
+        self.connection.commit() #commit only if no errors
+        logger.info("Sucessfuly executed all operations")
+    
     def bulk_insert_chunks(self, table_name, values, chunk_size=1000):
         """
         Bulk insert via batches., commiting after each batch. If any of the batches fails, insertions continue by
