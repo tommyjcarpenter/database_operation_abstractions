@@ -4,6 +4,7 @@ from __future__ import division
 import sys, traceback
 import psycopg2
 import psycopg2.errorcodes
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from math import ceil
 from contexttimer import Timer
 
@@ -30,7 +31,25 @@ class PGConnCM(object):
     def __exit__(self, *args):
         self.connection.close()
 
-    def __init__(self, database, user, password, host, port):
+    def __init__(self, database, user, password, host, port, create_database_on_init = False):
+        """
+        if create_database_on_init is True, then this connects to the Postgres database by default
+        and tries to create the database `database`. The passed in User must have perms to do this
+        This function keeps going if the database already exists.
+        """
+        if create_database_on_init:
+            try:
+                #stolen from: http://stackoverflow.com/questions/19426448/creating-a-postgresql-db-using-psycopg2
+                con = psycopg2.connect(database='postgres', user=user, password=password, port=int(port), host=host)
+                con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+                cur = con.cursor()
+                cur.execute('CREATE DATABASE ' + database)
+                con.commit()
+                cur.close()
+                con.close()
+            except psycopg2.ProgrammingError:
+                pass #database already exists, keep going
+
         self.connection = psycopg2.connect(database=database, user=user, password=password, port=int(port), host=host)
         self.cursor = self.connection.cursor()
                                                                                        
