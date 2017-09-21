@@ -5,7 +5,7 @@ from pip.download import PipSession
 
 setup(
     name='db_op_abstractions',
-    version='0.3.0',
+    version='0.5.0',
     packages=find_packages(),
     author = "Tommy Carpenter, Michael Hwang",
     author_email = "",
