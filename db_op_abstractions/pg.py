@@ -53,11 +53,15 @@ class PGConnCM(object):
         self.connection = psycopg2.connect(database=database, user=user, password=password, port=int(port), host=host)
         self.cursor = self.connection.cursor()
 
-    def select_generator(self,stmt):
-        """execute a select query and return results as a generator"""
+    def select_generator(self,stmt, tup = ()):
+        """execute a select query and return results as a generator
+        tup: a safe pg statement is of the form
+               cur.execute("SELECT * FROM data WHERE id = %s;", (ids,))
+            tup is (ids,)
+        """
         data = []
         try:
-            self.cursor.execute(stmt)
+            self.cursor.execute(stmt, tup)
             #change if RAM not plentiful..currently defeats the purpose of a generator
             data = self.cursor.fetchall()
             for row in data:
