@@ -121,10 +121,16 @@ class PGConnCM(object):
                     if chunk_count-1 > i else src[i*chunk_size:]
 
         with Timer() as ct:
-            num_records = [self.bulk_insert(table_name, chunk) for chunk in chunks(values, chunk_size) ]
-            logger.info("Done inserting: {0}records inserted, {1}s".format(sum(num_records), ct.elapsed))
+            total_records = 0
+            for cindex, chunk in enumerate(chunks(values, chunk_size)):
+                try:
+                    num_records = self.bulk_insert(table_name, chunk)
+                    total_records += num_records
+                except Exception as e:
+                    logger.error("Chunk {0} has failed due to {1}".format(cindex, e))
+            logger.info("Done inserting: {0} records inserted, {1}s".format(total_records, ct.elapsed))
 
-        return sum(num_records)
+        return total_records
 
     def bulk_insert(self, table_name, values):
         """
@@ -154,6 +160,10 @@ class PGConnCM(object):
                self.connection.commit()
                return len(values)
         except psycopg2.ProgrammingError as e:
+            logger.error("Failed pg bulk_insert: error: {0}".format(e))
+            self.connection.rollback()
+            raise e
+        except psycopg2.IntegrityError as e:
             logger.error("Failed pg bulk_insert: error: {0}".format(e))
             self.connection.rollback()
             raise e
